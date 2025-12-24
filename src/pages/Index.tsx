@@ -5,6 +5,8 @@ import Features from "@/components/Features";
 import Rooms from "@/components/Rooms";
 import WhyEdibec from "@/components/WhyEdibec";
 import Gallery from "@/components/Gallery";
+import GuestReviews from "@/components/GuestReviews";
+import BookingForm from "@/components/BookingForm";
 import Location from "@/components/Location";
 import HouseRules from "@/components/HouseRules";
 import BookingCTA from "@/components/BookingCTA";
@@ -39,6 +41,8 @@ const Index = () => {
         <Rooms />
         <WhyEdibec />
         <Gallery />
+        <GuestReviews />
+        <BookingForm />
         <Location />
         <HouseRules />
         <BookingCTA />

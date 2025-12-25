@@ -96,7 +96,7 @@ const Footer = () => {
             </p>
             <a
               href="#booking"
-              className="inline-flex items-center gap-3 bg-gold text-navy font-semibold px-6 py-3 rounded-lg hover:shadow-gold transition-all"
+              className="inline-block bg-gold text-navy font-semibold px-6 py-3 rounded-lg hover:shadow-gold transition-all"
             >
               Book Your Stay
             </a>

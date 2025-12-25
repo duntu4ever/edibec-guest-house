@@ -64,10 +64,8 @@ const Navbar = () => {
               <Phone className="w-4 h-4" />
               <span className="text-sm">0553 157 354</span>
             </a>
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
+          <a
+              href="#booking"
               className="bg-gold text-navy font-semibold px-5 py-2.5 rounded-lg hover:shadow-gold transition-all text-sm"
             >
               Book Now
@@ -127,9 +125,7 @@ const Navbar = () => {
                   <span>0553 157 354</span>
                 </a>
                 <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#booking"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="bg-gold text-navy font-semibold px-8 py-3 rounded-lg text-center"
                 >

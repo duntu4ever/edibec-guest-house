@@ -69,7 +69,7 @@ const BookingForm = () => {
   const onSubmit = async (data: BookingFormData) => {
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from("bookings").insert({
+      const bookingData = {
         guest_name: data.guest_name,
         email: data.email,
         phone: data.phone,
@@ -78,9 +78,21 @@ const BookingForm = () => {
         check_out_date: format(data.check_out_date, "yyyy-MM-dd"),
         guests_count: data.guests_count,
         special_requests: data.special_requests || null,
-      });
+      };
+
+      const { error } = await supabase.from("bookings").insert(bookingData);
 
       if (error) throw error;
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke("send-booking-notification", {
+          body: bookingData,
+        });
+      } catch (emailError) {
+        console.error("Email notification failed:", emailError);
+        // Don't fail the booking if email fails
+      }
 
       setIsSuccess(true);
       toast.success("Booking request submitted! We'll contact you shortly.");

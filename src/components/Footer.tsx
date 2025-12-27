@@ -109,7 +109,8 @@ const Footer = () => {
         <div className="container-custom py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-cream/50 text-sm">
-              © {currentYear} Edibec Guest House. All rights reserved.
+              © {currentYear} Edibec Guest House. All rights reserved. 
+              Designed & Developed by <a href="https://www.linkedin.com/in/jduntu/" target="_blank" rel="noopener noreferrer" className="text-cream hover:text-gold transition-colors">James Duntu</a> 
             </p>
           </div>
         </div>

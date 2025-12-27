@@ -196,3 +196,6 @@ Potential additions:
 
 For website updates or technical support, contact the development team or reach out to:
 - **Edibec Guest House:** 0553 157 354 /
+
+
+- **Developed by James Duntu**

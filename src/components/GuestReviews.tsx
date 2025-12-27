@@ -8,7 +8,7 @@ const reviews = [
     location: "Accra, Ghana",
     rating: 5,
     text: "Excellent service and very clean rooms. The staff was incredibly welcoming and the breakfast was delicious. Perfect location for business trips to Takoradi.",
-    date: "November 2024",
+    date: "November 2025",
   },
   {
     id: 2,
@@ -32,7 +32,7 @@ const reviews = [
     location: "Paris, France",
     rating: 4,
     text: "Very pleasant stay. The room was spotless and the breakfast included was a nice touch. Great location near the harbor for our work project.",
-    date: "September 2024",
+    date: "September 2025",
   },
 ];
 

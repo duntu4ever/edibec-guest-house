@@ -22,8 +22,24 @@ ON public.bookings
 FOR INSERT
 WITH CHECK (true);
 
--- Only allow reading own bookings by email (for future use) or admin access
-CREATE POLICY "Users cannot read bookings"
+-- Drop old restrictive policy if it exists (for existing installations)
+DROP POLICY IF EXISTS "Users cannot read bookings" ON public.bookings;
+
+-- Allow authenticated users (admins) to read all bookings
+CREATE POLICY "Authenticated users can read bookings"
 ON public.bookings
 FOR SELECT
-USING (false);
+USING (auth.role() = 'authenticated');
+
+-- Allow authenticated users (admins) to update bookings
+CREATE POLICY "Authenticated users can update bookings"
+ON public.bookings
+FOR UPDATE
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');
+
+-- Allow authenticated users (admins) to delete bookings (optional, for future use)
+CREATE POLICY "Authenticated users can delete bookings"
+ON public.bookings
+FOR DELETE
+USING (auth.role() = 'authenticated');

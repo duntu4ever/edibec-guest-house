@@ -12,8 +12,8 @@ const reviews = [
   },
   {
     id: 2,
-    name: "Sarah Johnson",
-    location: "London, UK",
+    name: "Sarah Koomson",
+    location: "Tarkwa, Ghana",
     rating: 5,
     text: "My home away from home! The 24/7 reception was a lifesaver when my flight was delayed. Comfortable beds, great AC, and the location is unbeatable.",
     date: "October 2024",
@@ -28,8 +28,8 @@ const reviews = [
   },
   {
     id: 4,
-    name: "Marie Dupont",
-    location: "Paris, France",
+    name: "Jeffery Ansah",
+    location: "Takoradi, Ghana",
     rating: 4,
     text: "Very pleasant stay. The room was spotless and the breakfast included was a nice touch. Great location near the harbor for our work project.",
     date: "September 2025",

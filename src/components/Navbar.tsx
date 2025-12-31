@@ -96,7 +96,7 @@ const Navbar = () => {
             exit={{ opacity: 0, y: -20 }}
             className="fixed inset-0 z-40 lg:hidden"
           >
-            <div className="absolute inset-0 bg-navy/98 backdrop-blur-lg" />
+            <div className="absolute inset-0 bg-cream/98 backdrop-blur-lg" />
             <div className="relative h-full flex flex-col items-center justify-center gap-8 pt-20">
               {navLinks.map((link, index) => (
                 <motion.a
@@ -106,7 +106,7 @@ const Navbar = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-cream text-2xl font-serif font-semibold hover:text-gold transition-colors"
+                  className="text-black text-2xl font-serif font-semibold hover:text-gold transition-colors"
                 >
                   {link.label}
                 </motion.a>
@@ -119,9 +119,9 @@ const Navbar = () => {
               >
                 <a
                   href="tel:+233553157354"
-                  className="flex items-center justify-center gap-2 text-cream/80 hover:text-gold transition-colors"
+                  className="flex items-center justify-center gap-2 text-black hover:text-gold transition-colors"
                 >
-                  <Phone className="w-5 h-5" />
+                  <Phone className="w-5 h-5 text-black" />
                   <span>0553 157 354</span>
                 </a>
                 <a

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const landmarks = [
   { icon: Building, label: "Opposite SSNIT House" },
-  { icon: Landmark, label: "Behind Old Commercial Bank" },
+  { icon: Landmark, label: "Behind Main GCB" },
   { icon: MapPin, label: "Near Central Police Station" },
 ];
 
@@ -53,7 +53,7 @@ const Location = () => {
             <div className="bg-cream rounded-xl p-6 mb-6 relative group">
               <p className="text-foreground font-medium mb-1">Edibec Guest House</p>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Behind Old Commercial Bank<br />
+                Behind Main GCB<br />
                 Opposite SSNIT House<br />
                 Takoradi, Ghana
               </p>

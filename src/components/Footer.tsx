@@ -43,7 +43,7 @@ const Footer = () => {
               <div className="flex items-start gap-3 text-cream/70">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
                 <span className="text-sm">
-                  Behind Old Commercial Bank,<br />
+                  Behind Main GCB,<br />
                   Opposite SSNIT House,<br />
                   Takoradi, Ghana
                 </span>

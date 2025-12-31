@@ -74,7 +74,7 @@ const Hero = () => {
         >
           <div className="flex items-center gap-2 text-cream/90">
             <MapPin className="w-5 h-5 text-gold" />
-            <span className="text-sm">Behind Old Commercial Bank</span>
+            <span className="text-sm">Behind Main GCB</span>
           </div>
           <div className="flex items-center gap-2 text-cream/90">
             <Star className="w-5 h-5 text-gold" />

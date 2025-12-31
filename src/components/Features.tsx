@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Building2, Clock, Coffee, Car, Snowflake, Shield } from "lucide-react";
+import { Building2, Clock, Coffee, Car, Snowflake, Shield, Wifi, Sparkles, Shirt } from "lucide-react";
 
 const features = [
   { icon: Building2, label: "Prime Central Location" },
@@ -8,6 +8,9 @@ const features = [
   { icon: Car, label: "Spacious Parking" },
   { icon: Snowflake, label: "Fully Air-Conditioned" },
   { icon: Shield, label: "Secure & Safe" },
+  { icon: Wifi, label: "Free Wifi" },
+  { icon: Sparkles, label: "Housekeeping services" },
+  { icon: Shirt, label: "Laundry services" },
 ];
 
 const Features = () => {

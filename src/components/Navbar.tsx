@@ -32,23 +32,23 @@ const Navbar = () => {
         transition={{ duration: 0.5 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? "bg-navy/95 backdrop-blur-md shadow-lg py-3"
-            : "bg-transparent py-5"
+            ? "bg-navy/95 backdrop-blur-md shadow-lg py-2 sm:py-3"
+            : "bg-transparent py-3 sm:py-4 md:py-5"
         }`}
       >
-        <div className="container-custom flex items-center justify-between">
+        <div className="container-custom flex items-center justify-between gap-4">
           {/* Logo */}
-          <a href="#" className="relative z-10">
+          <a href="#" className="relative z-10 flex-shrink-0">
             <Logo variant="light" />
           </a>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-6 xl:gap-8 flex-1 justify-center">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="text-cream/80 hover:text-gold transition-colors text-sm font-medium"
+                className="text-cream/80 hover:text-gold transition-colors text-sm font-medium whitespace-nowrap"
               >
                 {link.label}
               </a>
@@ -56,17 +56,17 @@ const Navbar = () => {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-3 xl:gap-4 flex-shrink-0">
             <a
               href="tel:+233553157354"
-              className="flex items-center gap-2 text-cream/80 hover:text-gold transition-colors"
+              className="flex items-center gap-2 text-cream/80 hover:text-gold transition-colors whitespace-nowrap"
             >
-              <Phone className="w-4 h-4" />
+              <Phone className="w-4 h-4 flex-shrink-0" />
               <span className="text-sm">0553 157 354</span>
             </a>
-          <a
+            <a
               href="#booking"
-              className="bg-gold text-navy font-semibold px-5 py-2.5 rounded-lg hover:shadow-gold transition-all text-sm"
+              className="bg-gold text-navy font-semibold px-4 xl:px-5 py-2 xl:py-2.5 rounded-lg hover:shadow-gold transition-all text-sm whitespace-nowrap"
             >
               Book Now
             </a>

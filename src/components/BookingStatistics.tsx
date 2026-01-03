@@ -8,7 +8,9 @@ import {
   Clock, 
   XCircle,
   TrendingUp,
-  Users
+  Users,
+  DollarSign,
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -19,6 +21,10 @@ type Booking = {
   check_out_date: string;
   guests_count: number;
   created_at: string;
+  total_amount?: number;
+  total_paid?: number;
+  balance_due?: number;
+  payment_status?: string;
 };
 
 const BookingStatistics = () => {
@@ -55,6 +61,10 @@ const BookingStatistics = () => {
     confirmed: bookings?.filter((b) => b.status === "confirmed").length || 0,
     cancelled: bookings?.filter((b) => b.status === "cancelled").length || 0,
     totalGuests: bookings?.reduce((sum, b) => sum + b.guests_count, 0) || 0,
+    totalRevenue: bookings?.reduce((sum, b) => sum + (b.total_paid || 0), 0) || 0,
+    outstandingBalance: bookings?.reduce((sum, b) => sum + (b.balance_due || 0), 0) || 0,
+    unpaidBookings: bookings?.filter((b) => b.payment_status === "unpaid" && b.status !== "cancelled").length || 0,
+    partiallyPaidBookings: bookings?.filter((b) => b.payment_status === "partially_paid").length || 0,
   };
 
   // Calculate upcoming bookings (check-in within next 30 days)
@@ -105,6 +115,36 @@ const BookingStatistics = () => {
       bgColor: "bg-destructive/10",
     },
     {
+      label: "Total Revenue",
+      value: `₵${stats.totalRevenue.toFixed(2)}`,
+      icon: DollarSign,
+      color: "text-sage",
+      bgColor: "bg-sage/10",
+      isCurrency: true,
+    },
+    {
+      label: "Outstanding Balance",
+      value: `₵${stats.outstandingBalance.toFixed(2)}`,
+      icon: AlertCircle,
+      color: "text-gold-dark",
+      bgColor: "bg-gold/10",
+      isCurrency: true,
+    },
+    {
+      label: "Unpaid Bookings",
+      value: stats.unpaidBookings,
+      icon: AlertCircle,
+      color: "text-destructive",
+      bgColor: "bg-destructive/10",
+    },
+    {
+      label: "Partially Paid",
+      value: stats.partiallyPaidBookings,
+      icon: Clock,
+      color: "text-gold-dark",
+      bgColor: "bg-gold/10",
+    },
+    {
       label: "Total Guests",
       value: stats.totalGuests,
       icon: Users,
@@ -143,7 +183,9 @@ const BookingStatistics = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-navy">{stat.value}</p>
+                    <p className={`font-bold text-navy ${stat.isCurrency ? "text-xl" : "text-3xl"}`}>
+                      {stat.value}
+                    </p>
                   </div>
                   <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
                     <Icon className={`w-6 h-6 ${stat.color}`} />

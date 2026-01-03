@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Users, Loader2, CheckCircle } from "lucide-react";
+import { format, eachDayOfInterval, startOfDay, endOfDay } from "date-fns";
+import { Calendar as CalendarIcon, Users, Loader2, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,6 +45,8 @@ const bookingSchema = z.object({
   guests_count: z.number().min(1).max(4),
   special_requests: z.string().max(500).optional(),
   status: z.string().default("pending"),
+  initial_payment: z.number().min(0).optional().default(0),
+  final_payment: z.number().min(0).optional().default(0),
 }).refine((data) => data.check_out_date > data.check_in_date, {
   message: "Check-out must be after check-in",
   path: ["check_out_date"],
@@ -55,9 +58,12 @@ interface AdminBookingFormProps {
   onSuccess?: () => void;
 }
 
+const TOTAL_ROOMS = 4;
+
 const AdminBookingForm = ({ onSuccess }: AdminBookingFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -69,12 +75,108 @@ const AdminBookingForm = ({ onSuccess }: AdminBookingFormProps) => {
       guests_count: 1,
       special_requests: "",
       status: "pending",
+        initial_payment: 0,
+        final_payment: 0,
     },
   });
 
+  const checkInDate = form.watch("check_in_date");
+  const checkOutDate = form.watch("check_out_date");
+  const roomType = form.watch("room_type");
+
+  // Fetch existing bookings for availability check
+  const { data: existingBookings } = useQuery({
+    queryKey: ["bookings-availability-check"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("check_in_date, check_out_date, status")
+        .in("status", ["pending", "confirmed"]);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Calculate room rate and total amount
+  const roomRate = useMemo(() => {
+    if (roomType === "standard-room-only") return 250;
+    if (roomType === "standard-with-breakfast") return 280;
+    return 0;
+  }, [roomType]);
+
+  const totalAmount = useMemo(() => {
+    if (!checkInDate || !checkOutDate || !roomRate) return 0;
+    const nights = Math.ceil(
+      (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return nights * roomRate;
+  }, [checkInDate, checkOutDate, roomRate]);
+
+  const initialPayment = form.watch("initial_payment") || 0;
+  const finalPayment = form.watch("final_payment") || 0;
+  const totalPaid = initialPayment + finalPayment;
+  const balanceDue = Math.max(0, totalAmount - totalPaid);
+
+  // Check room availability
+  useEffect(() => {
+    if (!checkInDate || !checkOutDate || !existingBookings) {
+      setAvailabilityError(null);
+      return;
+    }
+
+    const days = eachDayOfInterval({ start: checkInDate, end: checkOutDate });
+    const activeBookings = existingBookings.filter(
+      (b: any) => b.status === "confirmed" || b.status === "pending"
+    );
+
+    const maxBooked = Math.max(
+      ...days.map((day) => {
+        const dayStart = startOfDay(day);
+        const dayEnd = endOfDay(day);
+        const overlapping = activeBookings.filter((booking: any) => {
+          const checkIn = startOfDay(new Date(booking.check_in_date));
+          const checkOut = endOfDay(new Date(booking.check_out_date));
+          return (checkIn <= dayEnd && checkOut >= dayStart);
+        });
+        return overlapping.length;
+      })
+    );
+
+    if (maxBooked >= TOTAL_ROOMS) {
+      setAvailabilityError(
+        `No rooms available for selected dates. ${maxBooked} of ${TOTAL_ROOMS} rooms are already booked.`
+      );
+    } else {
+      setAvailabilityError(null);
+    }
+  }, [checkInDate, checkOutDate, existingBookings]);
+
+  // Update total amount when dates or room type changes
+  useEffect(() => {
+    if (totalAmount > 0) {
+      form.setValue("initial_payment", form.getValues("initial_payment") || 0);
+      form.setValue("final_payment", form.getValues("final_payment") || 0);
+    }
+  }, [totalAmount, form]);
+
   const onSubmit = async (data: BookingFormData) => {
+    if (availabilityError) {
+      toast.error(availabilityError);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const nights = Math.ceil(
+        (data.check_out_date.getTime() - data.check_in_date.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const calculatedTotal = nights * roomRate;
+
+      const totalPaid = (data.initial_payment || 0) + (data.final_payment || 0);
+      const balanceDue = Math.max(0, calculatedTotal - totalPaid);
+      const payment_status = balanceDue === 0 ? "fully_paid" : totalPaid === 0 ? "unpaid" : "partially_paid";
+
       const { error } = await supabase.from("bookings").insert({
         guest_name: data.guest_name,
         email: data.email,
@@ -85,6 +187,13 @@ const AdminBookingForm = ({ onSuccess }: AdminBookingFormProps) => {
         guests_count: data.guests_count,
         special_requests: data.special_requests || null,
         status: data.status,
+        room_rate: roomRate,
+        total_amount: calculatedTotal,
+        initial_payment: data.initial_payment || 0,
+        final_payment: data.final_payment || 0,
+        total_paid: totalPaid,
+        balance_due: balanceDue,
+        payment_status,
       });
 
       if (error) throw error;
@@ -376,6 +485,153 @@ const AdminBookingForm = ({ onSuccess }: AdminBookingFormProps) => {
               )}
             />
           </div>
+
+          {/* Room Availability Warning */}
+          {availabilityError && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-destructive">Room Availability Issue</p>
+                <p className="text-sm text-destructive/80 mt-1">{availabilityError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Payment Information Section */}
+          {(roomType && checkInDate && checkOutDate) && (
+            <div className="bg-cream-dark p-6 rounded-xl border border-border/50 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-gold" />
+                <h3 className="font-serif text-xl text-navy font-semibold">Payment Information</h3>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Room Rate (per night)</p>
+                  <p className="text-lg font-semibold text-navy">₵{roomRate.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Number of Nights</p>
+                  <p className="text-lg font-semibold text-navy">
+                    {checkInDate && checkOutDate
+                      ? Math.ceil(
+                          (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+                        )
+                      : 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                  <p className="text-lg font-semibold text-navy">₵{totalAmount.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <FormField
+                  control={form.control}
+                  name="initial_payment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-navy font-medium">
+                        Initial Payment (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={totalAmount}
+                          step="0.01"
+                          placeholder="0.00"
+                          className="border-border focus:ring-gold"
+                          {...field}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            field.onChange(value);
+                          }}
+                          value={field.value || 0}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter the initial deposit amount if paid at booking time
+                      </p>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="pt-4">
+                <FormField
+                  control={form.control}
+                  name="final_payment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-navy font-medium">
+                        Final Payment (Optional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={totalAmount}
+                          step="0.01"
+                          placeholder="0.00"
+                          className="border-border focus:ring-gold"
+                          {...field}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            field.onChange(value);
+                          }}
+                          value={field.value || 0}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter the final payment amount when the remaining balance is paid
+                      </p>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="bg-card p-4 rounded-lg border border-border/50 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Paid:</span>
+                  <span className="font-semibold text-navy">₵{totalPaid.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Balance Due:</span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      balanceDue === 0 ? "text-sage" : balanceDue > 0 ? "text-gold-dark" : "text-navy"
+                    )}
+                  >
+                    ₵{balanceDue.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  <span className="text-sm font-medium text-navy">Payment Status:</span>
+                  <span
+                    className={cn(
+                      "text-xs font-semibold px-2 py-1 rounded",
+                      totalPaid === 0
+                        ? "bg-destructive/20 text-destructive"
+                        : balanceDue === 0
+                        ? "bg-sage/20 text-sage"
+                        : "bg-gold/20 text-gold-dark"
+                    )}
+                  >
+                    {totalPaid === 0
+                      ? "Unpaid"
+                      : balanceDue === 0
+                      ? "Fully Paid"
+                      : "Partially Paid"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <FormField
             control={form.control}

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, Filter, RefreshCw, Eye, BookOpen, Download } from "lucide-react";
+import { Search, Filter, RefreshCw, Eye, BookOpen, Download, DollarSign, Edit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,6 +36,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { cn } from "@/lib/utils";
 
 type Booking = {
   id: string;
@@ -46,6 +58,13 @@ type Booking = {
   special_requests: string | null;
   status: string;
   created_at: string;
+  room_rate?: number;
+  total_amount?: number;
+  initial_payment?: number;
+  final_payment?: number;
+  total_paid?: number;
+  balance_due?: number;
+  payment_status?: string;
 };
 
 const getStatusBadgeVariant = (status: string) => {
@@ -72,10 +91,146 @@ const getRoomTypeLabel = (roomType: string) => {
   }
 };
 
+const getPaymentStatusBadge = (status?: string) => {
+  switch (status) {
+    case "fully_paid":
+      return "bg-sage/20 text-sage border-sage/30";
+    case "partially_paid":
+      return "bg-gold/20 text-gold-dark border-gold/30";
+    case "unpaid":
+      return "bg-destructive/20 text-destructive border-destructive/30";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+};
+
+const paymentFormSchema = z.object({
+  initial_payment: z.number().min(0),
+  final_payment: z.number().min(0),
+});
+
+type PaymentFormData = z.infer<typeof paymentFormSchema>;
+
+const PaymentEditForm = ({
+  booking,
+  onSave,
+  onCancel,
+}: {
+  booking: Booking;
+  onSave: (data: PaymentFormData) => void;
+  onCancel: () => void;
+}) => {
+  const form = useForm<PaymentFormData>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      initial_payment: booking.initial_payment || 0,
+      final_payment: booking.final_payment || 0,
+    },
+  });
+
+  const initialPayment = form.watch("initial_payment") || 0;
+  const finalPayment = form.watch("final_payment") || 0;
+  const totalPaid = initialPayment + finalPayment;
+  const balanceDue = Math.max(0, (booking.total_amount || 0) - totalPaid);
+
+  const onSubmit = (data: PaymentFormData) => {
+    onSave(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="initial_payment"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm text-navy">Initial Payment</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min="0"
+                  max={booking.total_amount}
+                  step="0.01"
+                  className="border-border focus:ring-gold"
+                  {...field}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    field.onChange(value);
+                  }}
+                  value={field.value || 0}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="final_payment"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm text-navy">Final Payment</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min="0"
+                  max={booking.total_amount}
+                  step="0.01"
+                  className="border-border focus:ring-gold"
+                  {...field}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    field.onChange(value);
+                  }}
+                  value={field.value || 0}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="bg-card p-3 rounded border border-border/50 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Paid:</span>
+            <span className="font-semibold text-navy">₵{totalPaid.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Balance Due:</span>
+            <span
+              className={cn(
+                "font-semibold",
+                balanceDue === 0 ? "text-sage" : balanceDue > 0 ? "text-gold-dark" : "text-navy"
+              )}
+            >
+              ₵{balanceDue.toFixed(2)}
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" className="flex-1 bg-gold text-navy hover:bg-gold-light">
+            Save Payment
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
 const BookingsTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [editingPayment, setEditingPayment] = useState<string | null>(null);
 
   const { data: bookings, isLoading, error, refetch } = useQuery({
     queryKey: ["bookings", statusFilter],
@@ -122,10 +277,58 @@ const BookingsTable = () => {
       if (error) throw error;
 
       toast.success("Booking status updated successfully");
-      refetch();
+      await refetch();
+      
+      // Refresh selected booking to show updated data
+      if (selectedBooking?.id === bookingId) {
+        const updated = bookings?.find(b => b.id === bookingId);
+        if (updated) setSelectedBooking(updated);
+      }
     } catch (error: any) {
       console.error("Error updating booking:", error);
       toast.error(error.message || "Failed to update booking status");
+    }
+  };
+
+  const updatePayment = async (bookingId: string, data: PaymentFormData) => {
+    try {
+      const totalPaid = (data.initial_payment || 0) + (data.final_payment || 0);
+      const { data: existing } = await supabase.from("bookings").select("total_amount").eq("id", bookingId).single();
+      const totalAmount = existing?.total_amount || 0;
+      const balanceDue = Math.max(0, totalAmount - totalPaid);
+      const payment_status = balanceDue === 0 ? "fully_paid" : totalPaid === 0 ? "unpaid" : "partially_paid";
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          initial_payment: data.initial_payment,
+          final_payment: data.final_payment,
+          total_paid: totalPaid,
+          balance_due: balanceDue,
+          payment_status,
+        } as any)
+        .eq("id", bookingId);
+
+      if (error) throw error;
+
+      toast.success("Payment updated successfully");
+      setEditingPayment(null);
+      
+      // Refetch and update selected booking immediately
+      const { data: refreshedBookings } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", bookingId)
+        .single();
+      
+      if (refreshedBookings && selectedBooking?.id === bookingId) {
+        setSelectedBooking(refreshedBookings as Booking);
+      }
+      
+      await refetch();
+    } catch (error: any) {
+      console.error("Error updating payment:", error);
+      toast.error(error.message || "Failed to update payment");
     }
   };
 
@@ -289,12 +492,16 @@ const BookingsTable = () => {
                   <TableHead className="text-navy font-semibold">Check-in</TableHead>
                   <TableHead className="text-navy font-semibold">Check-out</TableHead>
                   <TableHead className="text-navy font-semibold">Guests</TableHead>
+                  <TableHead className="text-navy font-semibold">Payment</TableHead>
                   <TableHead className="text-navy font-semibold">Status</TableHead>
                   <TableHead className="text-navy font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.map((booking, index) => (
+                {filteredBookings.map((booking, index) => {
+                    const rowTotalPaid = booking.total_paid ?? ((booking.initial_payment || 0) + (booking.final_payment || 0));
+                    const rowBalance = booking.balance_due ?? Math.max(0, (booking.total_amount || 0) - rowTotalPaid);
+                    return (
                   <motion.tr
                     key={booking.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -320,6 +527,34 @@ const BookingsTable = () => {
                       {format(new Date(booking.check_out_date), "MMM dd, yyyy")}
                     </TableCell>
                     <TableCell className="text-sm">{booking.guests_count}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Paid: </span>
+                          <span className="font-semibold text-navy">
+                            ₵{rowTotalPaid.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Balance: </span>
+                          <span className="font-semibold text-navy">
+                            ₵{rowBalance.toFixed(2)}
+                          </span>
+                        </div>
+                        <Badge
+                          className={cn(
+                            "text-xs",
+                            getPaymentStatusBadge(booking.payment_status)
+                          )}
+                        >
+                          {booking.payment_status === "fully_paid"
+                            ? "Fully Paid"
+                            : booking.payment_status === "partially_paid"
+                            ? "Partially Paid"
+                            : "Unpaid"}
+                        </Badge>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={booking.status}
@@ -357,8 +592,8 @@ const BookingsTable = () => {
                             </DialogDescription>
                           </DialogHeader>
                           {selectedBooking && (
-                            <ScrollArea className="max-h-[500px] pr-4">
-                              <div className="space-y-4">
+                            <ScrollArea className="max-h-[600px] pr-4">
+                              <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <p className="text-sm text-muted-foreground mb-1">Guest Name</p>
@@ -407,6 +642,102 @@ const BookingsTable = () => {
                                     </p>
                                   </div>
                                 </div>
+
+                                {/* Payment Information Section */}
+                                <div className="bg-cream-dark p-4 rounded-lg border border-border/50">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-semibold text-navy flex items-center gap-2">
+                                      <DollarSign className="w-4 h-4 text-gold" />
+                                      Payment Information
+                                    </h3>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingPayment(selectedBooking.id)}
+                                      className="text-xs"
+                                    >
+                                      <Edit className="w-3 h-3 mr-1" />
+                                      Edit Payment
+                                    </Button>
+                                  </div>
+
+                                  {editingPayment === selectedBooking.id ? (
+                                    <PaymentEditForm
+                                      booking={selectedBooking}
+                                      onSave={(data) => {
+                                        updatePayment(selectedBooking.id, data);
+                                      }}
+                                      onCancel={() => setEditingPayment(null)}
+                                    />
+                                  ) : (
+                                    (() => {
+                                      const selTotalPaid = selectedBooking.total_paid ?? ((selectedBooking.initial_payment || 0) + (selectedBooking.final_payment || 0));
+                                      const selBalance = selectedBooking.balance_due ?? Math.max(0, (selectedBooking.total_amount || 0) - selTotalPaid);
+                                      return (
+                                        <div className="space-y-3">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <p className="text-sm text-muted-foreground mb-1">Room Rate</p>
+                                          <p className="font-semibold text-navy">
+                                            ₵{(selectedBooking.room_rate || 0).toFixed(2)}/night
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                                          <p className="font-semibold text-navy">
+                                            ₵{(selectedBooking.total_amount || 0).toFixed(2)}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="border-t border-border pt-3 space-y-2">
+                                        <div className="flex justify-between">
+                                          <span className="text-sm text-muted-foreground">Initial Payment:</span>
+                                          <span className="font-medium text-navy">
+                                            ₵{(selectedBooking.initial_payment || 0).toFixed(2)}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-sm text-muted-foreground">Final Payment:</span>
+                                          <span className="font-medium text-navy">
+                                            ₵{(selectedBooking.final_payment || 0).toFixed(2)}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between pt-2 border-t border-border">
+                                          <span className="text-sm font-medium text-navy">Total Paid:</span>
+                                              <span className="font-semibold text-navy">
+                                                ₵{selTotalPaid.toFixed(2)}
+                                              </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-sm font-medium text-navy">Balance Due:</span>
+                                          <span
+                                            className={cn(
+                                              "font-semibold",
+                                                  selBalance === 0
+                                                    ? "text-sage"
+                                                    : "text-gold-dark"
+                                            )}
+                                          >
+                                                ₵{selBalance.toFixed(2)}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between pt-2 border-t border-border">
+                                          <span className="text-sm font-medium text-navy">Payment Status:</span>
+                                              <Badge className={getPaymentStatusBadge(selectedBooking.payment_status)}>
+                                                {selectedBooking.payment_status === "fully_paid"
+                                                  ? "✅ Fully Paid"
+                                                  : selectedBooking.payment_status === "partially_paid"
+                                                  ? "🟡 Partially Paid"
+                                                  : "🔴 Unpaid"}
+                                              </Badge>
+                                        </div>
+                                      </div>
+                                        </div>
+                                      );
+                                    })()
+                                  )}
+                                </div>
+
                                 {selectedBooking.special_requests && (
                                   <div>
                                     <p className="text-sm text-muted-foreground mb-1">Special Requests</p>
@@ -421,8 +752,9 @@ const BookingsTable = () => {
                         </DialogContent>
                       </Dialog>
                     </TableCell>
-                  </motion.tr>
-                ))}
+                    </motion.tr>
+                  );
+                })}
               </TableBody>
             </Table>
           </ScrollArea>

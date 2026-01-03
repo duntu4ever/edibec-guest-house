@@ -69,6 +69,17 @@ const BookingForm = () => {
   const onSubmit = async (data: BookingFormData) => {
     setIsSubmitting(true);
     try {
+      // Calculate room rate and total amount
+      const roomRate = data.room_type === "standard-room-only" ? 250 : 280;
+      const nights = Math.ceil(
+        (data.check_out_date.getTime() - data.check_in_date.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const totalAmount = nights * roomRate;
+
+      const totalPaid = 0;
+      const balanceDue = Math.max(0, totalAmount - totalPaid);
+      const payment_status = "unpaid";
+
       const { error } = await supabase.from("bookings").insert({
         guest_name: data.guest_name,
         email: data.email,
@@ -78,7 +89,14 @@ const BookingForm = () => {
         check_out_date: format(data.check_out_date, "yyyy-MM-dd"),
         guests_count: data.guests_count,
         special_requests: data.special_requests || null,
-      });
+        room_rate: roomRate,
+        total_amount: totalAmount,
+        initial_payment: 0,
+        final_payment: 0,
+        total_paid: totalPaid,
+        balance_due: balanceDue,
+        payment_status,
+      } as any);
 
       if (error) throw error;
 

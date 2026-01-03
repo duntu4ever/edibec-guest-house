@@ -8,6 +8,7 @@ import AdminNavbar from "@/components/AdminNavbar";
 import BookingsTable from "@/components/BookingsTable";
 import AdminBookingForm from "@/components/AdminBookingForm";
 import BookingStatistics from "@/components/BookingStatistics";
+import RoomAvailability from "@/components/RoomAvailability";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("bookings");
@@ -52,6 +53,16 @@ const AdminDashboard = () => {
 
           {/* Statistics */}
           <BookingStatistics />
+
+          {/* Room Availability */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <RoomAvailability />
+          </motion.div>
 
           {/* Main Content Tabs */}
           <motion.div

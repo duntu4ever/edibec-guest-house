@@ -27,6 +27,13 @@ export type Database = {
           room_type: string
           special_requests: string | null
           status: string
+          room_rate: number | null
+          total_amount: number | null
+          initial_payment: number | null
+          final_payment: number | null
+          total_paid: number | null
+          balance_due: number | null
+          payment_status: string | null
         }
         Insert: {
           check_in_date: string
@@ -40,6 +47,13 @@ export type Database = {
           room_type: string
           special_requests?: string | null
           status?: string
+          room_rate?: number | null
+          total_amount?: number | null
+          initial_payment?: number | null
+          final_payment?: number | null
+          total_paid?: number | null
+          balance_due?: number | null
+          payment_status?: string | null
         }
         Update: {
           check_in_date?: string
@@ -53,6 +67,13 @@ export type Database = {
           room_type?: string
           special_requests?: string | null
           status?: string
+          room_rate?: number | null
+          total_amount?: number | null
+          initial_payment?: number | null
+          final_payment?: number | null
+          total_paid?: number | null
+          balance_due?: number | null
+          payment_status?: string | null
         }
         Relationships: []
       }
